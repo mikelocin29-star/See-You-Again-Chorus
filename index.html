@@ -164,27 +164,65 @@
         "A4": "A4.mp3",
       },
       baseUrl: "https://tonejs.github.io/audio/salamander/",
+      onload: () => {
+        console.log("Piano samples loaded successfully!");
+      }
     }).toDestination();
 
-    async function playNote(note, element) {
+    // Start playing when key is pressed down
+    async function startNote(note, element) {
       if (Tone.context.state !== 'running') {
         await Tone.start();
       }
-      pianoSampler.triggerAttackRelease(note, "8n");
+      pianoSampler.triggerAttack(note);
+
       if (element) {
         element.classList.add('active');
-        setTimeout(() => element.classList.remove('active'), 150);
       }
     }
 
-    document.querySelectorAll('.key[data-note]').forEach(key => {
-      key.addEventListener('mousedown', () => playNote(key.dataset.note, key));
+    // Stop playing when key is released
+    function stopNote(note, element) {
+      pianoSampler.triggerRelease(note);
+
+      if (element) {
+        element.classList.remove('active');
+      }
+    }
+
+    // Mouse Event Listeners (Press and Hold)
+    const keys = document.querySelectorAll('.key[data-note]');
+    keys.forEach(key => {
+      const note = key.dataset.note;
+      
+      key.addEventListener('mousedown', () => startNote(note, key));
+      key.addEventListener('mouseup', () => stopNote(note, key));
+      key.addEventListener('mouseleave', () => stopNote(note, key));
     });
 
+    // Computer Keyboard Tracking (Press and Hold)
+    const pressedKeys = {};
+
     window.addEventListener('keydown', (e) => {
-      if (e.repeat) return;
-      const keyEl = document.querySelector(`.key[data-key="${e.key.toLowerCase()}"]`);
-      if (keyEl) playNote(keyEl.dataset.note, keyEl);
+      if (e.repeat) return; // Prevent stuttering while holding
+
+      const targetKey = e.key.toLowerCase();
+      const keyElement = document.querySelector(`.key[data-key="${targetKey}"]`);
+
+      if (keyElement && !pressedKeys[targetKey]) {
+        pressedKeys[targetKey] = true;
+        startNote(keyElement.dataset.note, keyElement);
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const targetKey = e.key.toLowerCase();
+      const keyElement = document.querySelector(`.key[data-key="${targetKey}"]`);
+
+      if (keyElement) {
+        delete pressedKeys[targetKey];
+        stopNote(keyElement.dataset.note, keyElement);
+      }
     });
   </script>
 </body>
